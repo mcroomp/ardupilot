@@ -25,6 +25,10 @@
 #include <AP_HAL/utility/Socket_native.h>
 #include "SIM_Aircraft.h"
 
+// Forward declaration so the private friend declaration below resolves
+// regardless of include order.
+class JSONTest;
+
 namespace SITL {
 
 class JSON : public Aircraft {
@@ -43,6 +47,8 @@ public:
     void set_interface_ports(const char* address, const int port_in, const int port_out) override;
 
 private:
+
+    friend class ::JSONTest;
 
     struct servo_packet_16 {
         uint16_t magic = 18458; // constant magic value
@@ -69,10 +75,7 @@ private:
     uint32_t frame_counter;
     double last_timestamp_s;
 
-    void output_servos(const struct sitl_input &input);
-    void recv_fdm(const struct sitl_input &input);
-
-    uint32_t parse_sensors(const char *json);
+    uint64_t parse_sensors(const char *json);
 
     // buffer for parsing pose data in JSON format
     uint8_t sensor_buffer[65000];
@@ -109,6 +112,7 @@ private:
         } wind_vane_apparent;
         float airspeed;
         bool no_time_sync;
+        float rpm[4];
     } state;
 
     // table to aid parsing of JSON sensor data
@@ -118,7 +122,7 @@ private:
         void *ptr;
         enum data_type type;
         bool required;
-    } keytable[32] {
+    } keytable[36] {
         { "", "timestamp", &state.timestamp_s, DATA_DOUBLE, true },
         { "imu", "gyro",    &state.imu.gyro, DATA_VECTOR3F, true },
         { "imu", "accel_body", &state.imu.accel_body, DATA_VECTOR3F, true },
@@ -151,44 +155,54 @@ private:
         { "rc", "rc_12", &state.rc[11], DATA_FLOAT, false },
         { "battery", "voltage", &state.bat_volt, DATA_FLOAT, false },
         { "battery", "current", &state.bat_amp, DATA_FLOAT, false },
+        { "rpm", "rpm_1", &state.rpm[0], DATA_FLOAT, false },
+        { "rpm", "rpm_2", &state.rpm[1], DATA_FLOAT, false },
+        { "rpm", "rpm_3", &state.rpm[2], DATA_FLOAT, false },
+        { "rpm", "rpm_4", &state.rpm[3], DATA_FLOAT, false },
     };
 
-    // Enum coresponding to the ordering of keys in the keytable.
-    enum DataKey {
-        TIMESTAMP   = 1U << 0,
-        GYRO        = 1U << 1,
-        ACCEL_BODY  = 1U << 2,
-        POSITION    = 1U << 3,
-        EULER_ATT   = 1U << 4,
-        QUAT_ATT    = 1U << 5,
-        VELOCITY    = 1U << 6,
-        RNG_1       = 1U << 7,
-        RNG_2       = 1U << 8,
-        RNG_3       = 1U << 9,
-        RNG_4       = 1U << 10,
-        RNG_5       = 1U << 11,
-        RNG_6       = 1U << 12,
-        WIND_VEL    = 1U << 13,
-        WIND_DIR    = 1U << 14,
-        WIND_SPD    = 1U << 15,
-        AIRSPEED    = 1U << 16,
-        TIME_SYNC   = 1U << 17,
-        RC_1        = 1U << 18,
-        RC_2        = 1U << 19,
-        RC_3        = 1U << 20,
-        RC_4        = 1U << 21,
-        RC_5        = 1U << 22,
-        RC_6        = 1U << 23,
-        RC_7        = 1U << 24,
-        RC_8        = 1U << 25,
-        RC_9        = 1U << 26,
-        RC_10       = 1U << 27,
-        RC_11       = 1U << 28,
-        RC_12       = 1U << 29,
-        BAT_VOLT    = 1U << 30,
-        BAT_AMP     = 1U << 31,
+    // Enum corresponding to the ordering of keys in the keytable.
+    // Bits 0-31 match the 4.6.3 layout exactly.  Bits 32-35 are new
+    // (RPM_1..4) and require uint64_t throughout the bitmask pipeline.
+    enum DataKey : uint64_t {
+        TIMESTAMP   = 1ULL << 0,
+        GYRO        = 1ULL << 1,
+        ACCEL_BODY  = 1ULL << 2,
+        POSITION    = 1ULL << 3,
+        EULER_ATT   = 1ULL << 4,
+        QUAT_ATT    = 1ULL << 5,
+        VELOCITY    = 1ULL << 6,
+        RNG_1       = 1ULL << 7,
+        RNG_2       = 1ULL << 8,
+        RNG_3       = 1ULL << 9,
+        RNG_4       = 1ULL << 10,
+        RNG_5       = 1ULL << 11,
+        RNG_6       = 1ULL << 12,
+        WIND_VEL    = 1ULL << 13,
+        WIND_DIR    = 1ULL << 14,
+        WIND_SPD    = 1ULL << 15,
+        AIRSPEED    = 1ULL << 16,
+        TIME_SYNC   = 1ULL << 17,
+        RC_1        = 1ULL << 18,
+        RC_2        = 1ULL << 19,
+        RC_3        = 1ULL << 20,
+        RC_4        = 1ULL << 21,
+        RC_5        = 1ULL << 22,
+        RC_6        = 1ULL << 23,
+        RC_7        = 1ULL << 24,
+        RC_8        = 1ULL << 25,
+        RC_9        = 1ULL << 26,
+        RC_10       = 1ULL << 27,
+        RC_11       = 1ULL << 28,
+        RC_12       = 1ULL << 29,
+        BAT_VOLT    = 1ULL << 30,
+        BAT_AMP     = 1ULL << 31,
+        RPM_1       = 1ULL << 32,
+        RPM_2       = 1ULL << 33,
+        RPM_3       = 1ULL << 34,
+        RPM_4       = 1ULL << 35,
     };
-    uint32_t last_received_bitmask;
+    uint64_t last_received_bitmask;
 
     uint32_t last_debug_ms;
 };
