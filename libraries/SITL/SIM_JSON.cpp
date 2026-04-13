@@ -327,7 +327,7 @@ void JSON::recv_fdm(const struct sitl_input &input)
         printf("\nJSON received:\n");
         for (uint16_t i=0; i<ARRAY_SIZE(keytable); i++) {
             struct keytable &key = keytable[i];
-            if ((received_bitmask &  1U << i) == 0) {
+            if ((received_bitmask & (1ULL << i)) == 0) {
                 continue;
             }
             if (strcmp(key.section, "") == 0) {
