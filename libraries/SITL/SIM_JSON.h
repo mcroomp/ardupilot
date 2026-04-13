@@ -75,6 +75,8 @@ private:
     uint32_t frame_counter;
     double last_timestamp_s;
 
+    void output_servos(const struct sitl_input &input);
+    void recv_fdm(const struct sitl_input &input);
     uint64_t parse_sensors(const char *json);
 
     // buffer for parsing pose data in JSON format
